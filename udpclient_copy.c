@@ -20,6 +20,7 @@ struct sockaddr_in createIPv4Address(int port){
 	address.sin_family=AF_INET;
 	address.sin_addr.s_addr=INADDR_ANY;
 	return address;
+	
 };
 
 struct args{
@@ -27,27 +28,24 @@ struct args{
 	struct sockaddr_in servaddr;
 };
 
-void receive(struct args arg){
-	int sockfd=arg.sockfd;
-	struct sockaddr_in servaddr=arg.servaddr;
+void receive(void* arg){
+	struct args *arguments = (struct args*) arg;
+	int sockfd=arguments->sockfd;
+	struct sockaddr_in servaddr=arguments->servaddr;
 	int len=sizeof(servaddr);
 	char buffer[1024];
 	while(true){
-		ssize_t n = recvfrom(sockfd,(char*)buffer,1024,MSG_WAITALL,(struct sockaddr*)&servaddr,&len);
-		bool flag=false;
+		ssize_t n = recvfrom(3,(char*)buffer,1024,MSG_WAITALL,(struct sockaddr*)&servaddr,&len);
 		if(n==-1){
-			printf("%s",strerror(errno));
+			printf("%s\n",strerror(errno));
 			break;
 		}
 		if(n>=0){
 			buffer[n] = '\0';
-			printf("Server:%s\n", buffer);
-			flag=true;
+			printf("Response:%s\n", buffer);
 			memset(buffer,0,strlen(buffer));
 		}
-		if(flag){
-			printf("Hooray\n");
-		}
+		
 	}
 }
 
@@ -76,7 +74,7 @@ int main() {
 	size_t linesize=0;
 	printf("Type to send\n");
 	
-	//thread_receive(arg);
+	thread_receive(arg);
 	
 	while(true){
 		ssize_t charCount=getline(&msg,&linesize,stdin);
@@ -89,14 +87,5 @@ int main() {
 			}
 		}
 	}
-	
-	//printf("Hello message sent.\n");
-			
-	//n = recvfrom(sockfd, (char *)buffer, MAXLINE,MSG_WAITALL, (struct sockaddr *) &servaddr,&len);
-	//buffer[n] = '\0';
-	//printf("Server : %s\n", buffer);
-	
-	//close(sockfd);
-	//return 0;
 }
 

@@ -22,27 +22,12 @@ struct sockaddr_in createIPv4Address(int port){
 	return address;
 };
 
-/*
-struct args{
-	int sockfd;
-	char** clients;
-	char* sender;
-};
-
-void broadcast(struct args arg){
-	int sockfd=arg.sockfd;
-	char** clients=arg.clients;
-	char* sender=arg.sender;
-	
-	char buffer[1024];
-}*/
-
 int main(){
-	char* clients[10];
+	int port_numbers[10];
 	int idx=0;
 	char buffer[1024];
 	
-	struct sockaddr_in servaddr, cliaddr;
+	struct sockaddr_in servaddr,cliaddr,sending_addr;
 		
 	int sockfd=createUDPIPv4Socket(); 
 		
@@ -63,30 +48,34 @@ int main(){
 	while(true){
 		int len = sizeof(cliaddr);
 		int n = recvfrom(sockfd,(char *)buffer,1024,MSG_WAITALL, ( struct sockaddr *) &cliaddr,&len);
-	
+		sending_addr=cliaddr;
+		
 		buffer[n] = '\0';
 		bool flag=true;
 		char* add=inet_ntoa(cliaddr.sin_addr);
 		printf("Client : %s", buffer);
-		printf("Address: %s\n", add);
+		printf("Address: %s Port:%d\n", add,cliaddr.sin_port);
 		
 		for(int j=0;j<idx;j++){
-			if(strcmp(clients[j],add)==0){
+			if(port_numbers[j]==cliaddr.sin_port){
 				flag=false;
 			}
 		}
 		
 		
 		if(flag){
-			clients[idx]=inet_ntoa(cliaddr.sin_addr);
+			port_numbers[idx]=cliaddr.sin_port;
 			idx+=1;
 		}
 		
-		ssize_t t=sendto(sockfd,(const char *)buffer, strlen(buffer),MSG_CONFIRM,(const struct sockaddr*) &cliaddr,len);
 		
-		if(t>0){
-			printf("Hello message sent...%ld\n",t);
+		for(int k=0;k<idx;k++){
+			if(port_numbers[k]!=cliaddr.sin_port){
+				sending_addr.sin_port=port_numbers[k];
+				ssize_t t=sendto(sockfd,(const char *)buffer, strlen(buffer)-1,MSG_CONFIRM,(const struct sockaddr*)&sending_addr,len);
+			}
 		}
+			
 	}
 		
 	return 0;
