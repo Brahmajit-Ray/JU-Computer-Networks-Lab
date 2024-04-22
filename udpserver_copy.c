@@ -14,29 +14,31 @@ int createUDPIPv4Socket(){
 	return socket(AF_INET,SOCK_DGRAM,0);
 }
 
-struct sockaddr_in createIPv4Address(int port){
-	struct sockaddr_in address;
-	address.sin_port=htons(port);
-	address.sin_family=AF_INET;
-	address.sin_addr.s_addr=INADDR_ANY;
+struct sockaddr_in* createIPv4Address(char* ip,int port){
+	struct sockaddr_in* address=malloc(sizeof(struct sockaddr_in));
+	address->sin_port=htons(port);
+	address->sin_family=AF_INET;
+	inet_pton(AF_INET,ip,&address->sin_addr.s_addr);
 	return address;
 };
 
+bool compare_address(struct sockaddr_in address1,struct sockaddr_in address2){
+	return ((address1.sin_addr.s_addr==address2.sin_addr.s_addr) && (address1.sin_port==address2.sin_port));
+}
+
 int main(){
-	int port_numbers[10];
+	struct sockaddr_in addresses[10];
 	int idx=0;
 	char buffer[1024];
 	
-	struct sockaddr_in servaddr,cliaddr,sending_addr;
+	struct sockaddr_in* servaddr;
+	struct sockaddr_in cliaddr,sending_addr;
 		
 	int sockfd=createUDPIPv4Socket(); 
 		
-	memset(&servaddr, 0, sizeof(servaddr));
-	memset(&cliaddr, 0, sizeof(cliaddr));
-		
-	servaddr=createIPv4Address(8080);
+	servaddr=createIPv4Address("172.16.14.52",8080);
 	
-	int b=bind(sockfd,(struct sockaddr*)&servaddr,sizeof(servaddr));
+	int b=bind(sockfd,(struct sockaddr*)servaddr,sizeof(struct sockaddr_in));
 	if(b==0){
 		printf("Bound Successfully\n");
 		printf("Waiting for incoming messages\n");
@@ -46,9 +48,9 @@ int main(){
 	}
 	
 	while(true){
-		int len = sizeof(cliaddr);
-		int n = recvfrom(sockfd,(char *)buffer,1024,MSG_WAITALL, ( struct sockaddr *) &cliaddr,&len);
-		sending_addr=cliaddr;
+		int len = sizeof(struct sockaddr_in);
+		int n = recvfrom(sockfd,(char *)buffer,1024,MSG_WAITALL,(struct sockaddr*)&cliaddr,&len);
+		//sending_addr=cliaddr;
 		
 		buffer[n] = '\0';
 		bool flag=true;
@@ -57,22 +59,22 @@ int main(){
 		printf("Address: %s Port:%d\n", add,cliaddr.sin_port);
 		
 		for(int j=0;j<idx;j++){
-			if(port_numbers[j]==cliaddr.sin_port){
+			if(compare_address(addresses[j],cliaddr)){
 				flag=false;
 			}
 		}
 		
 		
 		if(flag){
-			port_numbers[idx]=cliaddr.sin_port;
+			addresses[idx]=cliaddr;
 			idx+=1;
 		}
 		
 		
 		for(int k=0;k<idx;k++){
-			if(port_numbers[k]!=cliaddr.sin_port){
-				sending_addr.sin_port=port_numbers[k];
-				ssize_t t=sendto(sockfd,(const char *)buffer, strlen(buffer)-1,MSG_CONFIRM,(const struct sockaddr*)&sending_addr,len);
+			if(!compare_address(addresses[k],cliaddr)){
+				sending_addr=addresses[k];
+				ssize_t t=sendto(sockfd,(const char *)buffer,strlen(buffer)-1,MSG_CONFIRM,(const struct sockaddr*)&sending_addr,len);
 			}
 		}
 			
